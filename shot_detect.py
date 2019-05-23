@@ -8,11 +8,12 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import normalize
 import pickle
 
+
 svclassifier = pickle.load(open('./myModel94.sav', 'rb'))
 
 
 def devide(x,y):
-    if y == 0 and x > 0:
+    if y == 0 and x != 0:
         return float(x) / 10
     elif y == 1 and x < 20:
         return float(x) / 10
@@ -21,10 +22,10 @@ def devide(x,y):
     else:
         return round(x/y,4)
 
-def countKeypointMatching(frame1, frame2):
+def compareKeyPoint(frame_1, frame_2):
     try: 
-        img1 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
-        img2 = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+        img1 = cv.cvtColor(frame_1, cv.COLOR_BGR2GRAY)
+        img2 = cv.cvtColor(frame_2, cv.COLOR_BGR2GRAY)
         img1 = cv.resize(img1,(640,360), interpolation = cv.INTER_CUBIC)
         img2 = cv.resize(img2,(640,360), interpolation = cv.INTER_CUBIC)
         
@@ -32,24 +33,24 @@ def countKeypointMatching(frame1, frame2):
         # Initiate SIFT detector
         sift = cv.xfeatures2d.SIFT_create()
         # find the keypoints and descriptors with SIFT
-        kp1, des1 = sift.detectAndCompute(img1,None)
-        kp2, des2 = sift.detectAndCompute(img2,None)
+        keyPointsFrame1, descriptorsFrame1 = sift.detectAndCompute(img1,None)
+        keyPointsFrame2, descriptorsFrame2 = sift.detectAndCompute(img2,None)
         
         
         # FLANN parameters
         FLANN_INDEX_KDTREE = 1
         index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-        search_params = dict(checks=50)   # or pass empty dictionary
-        flann = cv.FlannBasedMatcher(index_params,search_params)
-        matches = flann.knnMatch(des1,des2,k=2)                                                                 
+        search_params = dict(checks = 50)   # or pass empty dictionary
+        flann = cv.FlannBasedMatcher(index_params, search_params)
+        matches = flann.knnMatch(descriptorsFrame1, descriptorsFrame2, k=2)
         count = 0
         for i,(m,n) in enumerate(matches):
-                if m.distance < 0.75*n.distance:
+                if m.distance < 0.75 * n.distance:
                     count = count + 1
     except:
         return 0, 0 , 0 
     else:
-        return count, len(kp1), len(kp2)
+        return count, len(keyPointsFrame1), len(keyPointsFrame2)
     
 def shotDetect(videoPath):
     cap = cv.VideoCapture(videoPath)
@@ -72,7 +73,7 @@ def shotDetect(videoPath):
             if currRet == False:
                 sys.exit(0)
 
-            totalMatches, numKp1, numKp2 = countKeypointMatching(prevFrame, currFrame)
+            totalMatches, numKp1, numKp2 = compareKeyPoint(prevFrame, currFrame)
             subMatches = abs(prevNumber[0] - totalMatches)
             subNumKeyPoint = abs(prevNumber[2] - numKp2)
             gradientMatches = devide(subMatches, totalMatches)
